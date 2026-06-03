@@ -1,0 +1,45 @@
+from flask import Flask, request, abort
+from linebot import LineBotApi, WebhookHandler
+from linebot.exceptions import InvalidSignatureError
+from linebot.models import MessageEvent, TextMessage, TextSendMessage
+import random
+
+app = Flask(__name__)
+
+line_bot_api = LineBotApi("TOKEN")
+handler = WebhookHandler("SECRET")
+
+foods = ["牛肉麵", "便當", "早餐", "手搖飲", "炸雞"]
+
+@app.route("/callback", methods=["POST"])
+def callback():
+    signature = request.headers["X-Line-Signature"]
+    body = request.get_data(as_text=True)
+
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        abort(400)
+
+    return "OK"
+
+
+@handler.add(MessageEvent, message=TextMessage)
+def handle_message(event):
+    msg = event.message.text
+
+    if msg == "美食轉盤":
+        result = random.choice(foods)
+
+        reply = f"""🎡 美食轉盤啟動！
+
+🍽 {result}
+👉 就決定是它了！"""
+
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=reply)
+        )
+
+if __name__ == "__main__":
+    app.run()
